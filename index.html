@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KannadaSetu AI — Kannada Text Digitization</title>
+<meta name="description" content="Turn scanned Kannada documents into editable, searchable text with local Arjuna-OCR.">
+<meta name="theme-color" content="#641C32">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23641C32'/%3E%3Cpath d='M5 22 Q16 4 27 22' fill='none' stroke='%23F9C300' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='24' r='1.6' fill='%23F9C300'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#641C32; --red-deep:#431323; --red-soft:#F1E6E7; --red-line:#D9BFC3;
+  --yellow:#B28A52; --yellow-deep:#8B6738; --yellow-soft:#F3EBDD; --yellow-line:#DCC9A8;
+  --ink:#241A1B; --ink-2:#453437; --muted:#78696A; --muted-2:#A99A94;
+  --paper:#F5F0E8; --paper-2:#EDE5D9; --surface:#FBF9F5;
+  --line:#DED4C7; --line-2:#CBBDAE;
+  --ok:#3F684F; --ok-soft:#E7EEE7; --warn:#80602D; --danger:#8A263B;
+  --radius-sm:5px; --radius:8px; --radius-lg:12px;
+  --shadow-sm:0 1px 2px rgba(36,26,27,.035);
+  --shadow:0 8px 24px -16px rgba(36,26,27,.22);
+  --shadow-lg:0 28px 60px -28px rgba(36,26,27,.3);
+  --font-display:"Fraunces","Iowan Old Style",Georgia,serif;
+  --font-ui:"Hanken Grotesk",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-kn:"Noto Sans Kannada","Nirmala UI","Tunga",system-ui,sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box;}
+[hidden]{display:none!important;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.6 var(--font-ui);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+:lang(kn),[lang="kn"]{font-family:var(--font-kn),var(--font-ui);}
+h1,h2,h3{line-height:1.15;margin:0;letter-spacing:-.015em;font-family:var(--font-display);font-weight:600;}
+h1{font-size:clamp(2rem,1.4rem+2.6vw,3.25rem);letter-spacing:-.035em;}
+h2{font-size:1.25rem;font-weight:600;letter-spacing:-.02em;}
+h3{font-size:1.05rem;font-family:var(--font-ui);font-weight:650;}
+p{margin:0;}
+a{color:var(--red);text-decoration-color:var(--red-line);text-underline-offset:3px;}
+a:hover{color:var(--red-deep);}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px;border-radius:6px;}
+::selection{background:var(--yellow-soft);color:var(--ink);}
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;padding:.75rem clamp(1rem,3vw,2rem);background:rgba(245,240,232,.94);backdrop-filter:saturate(160%) blur(12px);border-bottom:1px solid var(--line-2);box-shadow:0 3px 18px rgba(36,26,27,.025);}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent 0%,var(--yellow) 18%,var(--red) 52%,var(--yellow) 82%,transparent 100%);opacity:.58;}
+.brand{display:flex;align-items:center;gap:.9rem;text-decoration:none;color:var(--ink);}
+.brand-text{display:grid;line-height:1.1;}
+.brand-kn{font-size:1.15rem;font-weight:700;font-family:var(--font-display),var(--font-kn);letter-spacing:.01em;}
+.brand-en{font-size:.64rem;color:var(--muted);font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-top:.15rem;}
+.nav{display:flex;gap:.15rem;margin-left:auto;padding:.2rem 0;background:transparent;border-radius:0;}
+.nav a{text-decoration:none;color:var(--ink-2);font-weight:600;font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;padding:.5rem .85rem;border-radius:2px;transition:background .2s var(--ease),color .2s var(--ease);}
+.nav a:hover{background:var(--paper-2);color:var(--ink);}
+.nav a[aria-current="page"]{background:var(--red);color:#fffaf5;}
+.pill{display:inline-flex;align-items:center;gap:.5rem;font:600 .78rem var(--font-ui);letter-spacing:.025em;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);padding:.4rem .8rem;border-radius:3px;cursor:pointer;transition:border-color .2s var(--ease);}
+.pill:hover{border-color:var(--ink-2);}
+.pill::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:var(--muted-2);flex:none;}
+.pill[data-state="ready"]::before{background:var(--ok);box-shadow:0 0 0 3px rgba(63,104,79,.18);}
+.pill[data-state="missing"]::before{background:var(--yellow-deep);box-shadow:0 0 0 3px rgba(139,103,56,.18);}
+.pill[data-state="down"]::before{background:var(--red);box-shadow:0 0 0 3px rgba(100,28,50,.18);}
+main{flex:1;width:100%;max-width:1360px;margin:0 auto;padding:clamp(1.25rem,3vw,2.5rem) clamp(1rem,3vw,2rem);}
+.footer{padding:1.25rem clamp(1rem,3vw,2rem);color:var(--muted);font-size:.875rem;border-top:1px solid var(--line-2);background:var(--paper-2);text-align:center;letter-spacing:.015em;}
+.footer strong{color:var(--ink-2);}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:1.5rem;box-shadow:var(--shadow-sm);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;font:600 .94rem var(--font-ui);color:var(--ink);text-decoration:none;cursor:pointer;background:var(--surface);border:1px solid var(--line-2);border-radius:4px;padding:.6rem 1rem;min-height:2.6rem;letter-spacing:.015em;transition:background .18s var(--ease),border-color .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease);}
+.btn:hover{border-color:var(--ink-2);background:var(--paper);transform:translateY(-1px);box-shadow:var(--shadow);}
+.btn:active{transform:translateY(0);}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 5px 14px -9px rgba(67,19,35,.7);}
+.btn.primary:hover{background:var(--red-deep);border-color:var(--red-deep);}
+.btn.danger{color:var(--danger);border-color:var(--red-line);}
+.btn.danger:hover{background:var(--red-soft);border-color:var(--red);}
+.btn.small{padding:.35rem .7rem;min-height:2rem;font-size:.85rem;border-radius:3px;}
+.btn[disabled]{opacity:.55;cursor:not-allowed;transform:none!important;}
+.field{display:grid;gap:.35rem;margin-top:1rem;}
+.field label,.label{font-weight:600;font-size:.92rem;color:var(--ink-2);}
+.hint{color:var(--muted);font-size:.875rem;}
+input[type="text"],input[type="search"],select,textarea{font:inherit;color:var(--ink);background:#FFFEFC;border:1px solid var(--line-2);border-radius:4px;padding:.65rem .8rem;width:100%;transition:border-color .18s var(--ease),box-shadow .18s var(--ease);}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(100,28,50,.12);}
+textarea{resize:vertical;font-family:var(--font-kn),var(--font-ui);}
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem;font-weight:650;padding:.2rem .6rem;border-radius:3px;background:var(--paper-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap;letter-spacing:.025em;}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:#BCCFC2;}
+.badge.warn{background:var(--yellow-soft);color:var(--warn);border-color:var(--yellow-line);}
+.badge.bad{background:var(--red-soft);color:var(--danger);border-color:var(--red-line);}
+.notice{border-radius:5px;padding:.85rem 1rem;border:1px solid var(--line);background:var(--surface);font-size:.95rem;}
+.notice.warn{background:var(--yellow-soft);border-color:var(--yellow-line);color:var(--warn);}
+.notice.bad{background:var(--red-soft);border-color:var(--red-line);color:var(--red-deep);}
+.notice.info{background:var(--paper-2);border-color:var(--line-2);}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--muted);}
+.empty strong{display:block;color:var(--ink);margin-bottom:.35rem;font-family:var(--font-display);font-size:1.15rem;font-weight:600;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.hero{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:clamp(1.5rem,4vw,3.5rem);align-items:start;}
+.hero-intro{margin-bottom:1.5rem;max-width:48rem;}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:.5rem;font:650 .7rem var(--font-ui);letter-spacing:.2em;text-transform:uppercase;color:var(--yellow-deep);border:0;border-radius:0;padding:.2rem 0;background:transparent;margin-bottom:1rem;}
+.hero-eyebrow::before{content:"";width:1.4rem;height:1px;border-radius:0;background:var(--yellow);}
+.hero h1{max-width:13ch;font-size:clamp(2.7rem,1.8rem + 3.5vw,4.6rem);line-height:1.02;}
+.hero h1 em{font-style:italic;color:var(--red);}
+.hero-intro p{margin-top:1rem;color:var(--muted);font-size:1.02rem;max-width:38rem;line-height:1.75;}
+.drop{position:relative;display:grid;justify-items:center;gap:.6rem;text-align:center;border:1px dashed var(--line-2);border-radius:7px;padding:2.25rem 1.25rem;background:linear-gradient(145deg,#FBF8F2,#F1E9DE);transition:background .2s var(--ease),border-color .2s var(--ease),transform .2s var(--ease);}
+.drop:hover{border-color:var(--red-line);}
+.drop.over,.drop:focus-within{background:var(--red-soft);border-color:var(--red);transform:scale(1.005);}
+.drop input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.drop strong{font-size:1.075rem;font-family:var(--font-ui);font-weight:650;}
+.drop-icon{width:4.5rem;height:3.25rem;margin-bottom:.25rem;display:flex;align-items:center;justify-content:center;}
+.picked{display:flex;justify-content:space-between;gap:.75rem;align-items:center;margin-top:.85rem;padding:.7rem .9rem;background:var(--red-soft);border:1px solid var(--red-line);border-radius:4px;animation:fadeIn .25s var(--ease);}
+.picked span{overflow-wrap:anywhere;font-weight:500;font-size:.95rem;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.progress{margin-top:1.1rem;display:grid;gap:.5rem;}
+progress{width:100%;height:.65rem;border-radius:2px;overflow:hidden;appearance:none;-webkit-appearance:none;background:var(--paper-2);border:1px solid var(--line);}
+progress::-webkit-progress-bar{background:var(--paper-2);border-radius:2px;}
+progress::-webkit-progress-value{background:linear-gradient(90deg,var(--red) 0%,#8A263B 100%);border-radius:2px;}
+progress:indeterminate::-webkit-progress-value{background:linear-gradient(90deg,var(--red),var(--yellow),var(--red));background-size:200% 100%;animation:shimmer 1.4s linear infinite;}
+@keyframes shimmer{to{background-position:-200% 0;}}
+.spinner{display:inline-block;width:1rem;height:1rem;border:2.5px solid var(--red-soft);border-top-color:var(--red);border-radius:50%;animation:spin .85s linear infinite;vertical-align:-2px;margin-right:.35rem;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.checkbox{display:flex;gap:.7rem;align-items:flex-start;margin-top:1.1rem;cursor:pointer;}
+.checkbox input{margin-top:.2rem;width:1.15rem;height:1.15rem;accent-color:var(--red);cursor:pointer;flex:none;}
+.recent-list{list-style:none;margin:.85rem 0 0;padding:0;display:grid;gap:.2rem;}
+.recent-list a{display:block;text-decoration:none;color:var(--ink);padding:.6rem .7rem;border-radius:4px;transition:background .18s var(--ease);}
+.recent-list a:hover{background:var(--paper-2);}
+.recent-list small{display:block;color:var(--muted);font-size:.8rem;margin-top:.1rem;}
+.sample-btn{display:flex;align-items:center;gap:.75rem;width:100%;margin-top:.85rem;padding:.85rem 1rem;background:var(--yellow-soft);border:1px solid var(--yellow-line);border-radius:5px;cursor:pointer;font:600 .92rem var(--font-ui);color:var(--ink-2);text-align:left;transition:background .18s var(--ease),border-color .18s var(--ease);}
+.sample-btn:hover{background:#FFF9E0;border-color:var(--yellow-deep);}
+.sample-btn svg{flex:none;}
+.ws-head{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
+.title-input{flex:1 1 18rem;font-family:var(--font-display);font-size:1.35rem;font-weight:600;padding:.5rem .7rem;border-color:transparent;background:transparent;letter-spacing:-.015em;transition:all .18s var(--ease);}
+.title-input:hover{border-color:var(--line-2);background:#fff;}
+.title-input:focus{border-color:var(--red);background:#fff;}
+.ws-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.25rem;align-items:start;}
+.pane{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);}
+.pane-bar{display:flex;gap:.5rem;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:.65rem .85rem;border-bottom:1px solid var(--line);background:var(--paper);}
+.pane-bar strong{font-family:var(--font-ui);font-weight:650;font-size:.95rem;color:var(--ink-2);}
+.doc-scroll{max-height:74vh;overflow:auto;padding:1rem;background:var(--paper-2);display:flex;justify-content:center;}
+.doc-scroll img{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 4px 20px -4px rgba(36,26,27,.22),0 1px 3px rgba(36,26,27,.08);border-radius:2px;}
+.tabs{display:flex;gap:.2rem;padding:.2rem;background:var(--paper-2);border-radius:3px;}
+.tab{font:600 .875rem var(--font-ui);border:0;background:transparent;color:var(--muted);padding:.4rem .8rem;border-radius:2px;cursor:pointer;transition:all .18s var(--ease);}
+.tab:hover{color:var(--ink);}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);}
+.editor{display:block;width:100%;min-height:48vh;border:0;border-radius:0;padding:1.25rem;font-size:1.15rem;line-height:1.85;border-left:4px solid transparent;transition:border-color .2s var(--ease),background .2s var(--ease);}
+.editor:focus{outline:none;box-shadow:none;background:#FFFEFB;}
+.editor.edited{border-left-color:var(--yellow);background:#FFFEF7;}
+.editor.readonly{background:var(--paper);color:var(--ink-2);border-left-color:var(--line-2);}
+#confidenceView{white-space:normal;line-height:2.2;font-family:var(--font-kn);}
+#confidenceView .conf-high{color:var(--ok);}
+#confidenceView .conf-mid{color:var(--warn);background:var(--yellow-soft);border-radius:2px;padding:0 2px;}
+#confidenceView .conf-low{color:var(--danger);background:var(--red-soft);border-radius:2px;padding:0 2px;text-decoration:underline wavy;}
+#confidenceView .page-label{font-family:var(--font-ui);font-size:.8rem;color:var(--muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:.9rem 0 .3rem;}
+#confidenceView .conf-summary{font-family:var(--font-ui);font-size:.85rem;color:var(--muted);margin-bottom:.8rem;}
+.conf-legend{display:flex;gap:.75rem;align-items:center;padding:.5rem .85rem;border-top:1px solid var(--line);background:var(--paper);flex-wrap:wrap;}
+.conf-legend .dot{width:.7rem;height:.7rem;border-radius:2px;display:inline-block;margin-right:.3rem;vertical-align:-1px;}
+.conf-high .dot{background:var(--ok);}.conf-mid .dot{background:var(--yellow-deep);}.conf-low .dot{background:var(--red);}
+.conf-legend span{font-size:.82rem;color:var(--muted);display:inline-flex;align-items:center;}
+.translate-pane{border-top:1px solid var(--line);background:var(--paper-2);padding:1rem 1.25rem;}
+.translate-pane .tp-label{font-weight:650;font-size:.85rem;color:var(--ink-2);margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center;}
+.tp-text{font-size:1rem;line-height:1.7;color:var(--ink-2);white-space:pre-wrap;}
+.pane-foot{display:grid;gap:.85rem;padding:1rem;border-top:1px solid var(--line);background:var(--paper);}
+.counts{color:var(--muted);font-size:.875rem;font-weight:500;}
+.lib-bar{display:flex;gap:.85rem;align-items:center;flex-wrap:wrap;margin:1.25rem 0;}
+.lib-bar input{flex:1 1 18rem;max-width:32rem;}
+.doc-list{list-style:none;margin:0;padding:0;display:grid;gap:.6rem;}
+.doc-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem 1.25rem;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.15rem;transition:border-color .18s var(--ease),box-shadow .18s var(--ease);}
+.doc-row:hover{border-color:var(--line-2);box-shadow:var(--shadow);}
+.doc-title{font-family:var(--font-display);font-weight:600;font-size:1.1rem;color:var(--ink);text-decoration:none;overflow-wrap:anywhere;letter-spacing:-.01em;}
+.doc-title:hover{color:var(--red);}
+.doc-meta{display:flex;gap:.2rem .9rem;flex-wrap:wrap;color:var(--muted);font-size:.82rem;margin-top:.25rem;}
+.doc-snippet{color:var(--muted);font-size:.92rem;margin-top:.35rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.row-actions{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end;align-items:center;}
+.eval-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:1.75rem;align-items:start;}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin:1.1rem 0;}
+.metric{border:1px solid var(--line);border-radius:5px;padding:1.1rem 1.15rem;background:#F6F1E9;}
+.metric .big{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1;letter-spacing:-.035em;color:var(--red);}
+.metric .name{font-weight:650;font-size:.85rem;margin-top:.3rem;color:var(--ink-2);}
+.details{margin:.85rem 0 0;display:grid;grid-template-columns:auto 1fr;gap:.3rem 1rem;font-size:.9rem;}
+.details dt{color:var(--muted);font-weight:500;}.details dd{margin:0;overflow-wrap:anywhere;color:var(--ink-2);}
+dialog{border:1px solid var(--line);border-radius:var(--radius-lg);padding:1.5rem;max-width:min(34rem,calc(100vw - 2rem));width:100%;color:var(--ink);box-shadow:var(--shadow-lg);background:var(--surface);}
+dialog::backdrop{background:rgba(36,26,27,.5);backdrop-filter:blur(3px);}
+dialog form{display:grid;gap:1.1rem;}
+dialog h2{font-family:var(--font-display);font-weight:600;}
+.dlg-actions{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap;}
+.dlg-actions.reverse{flex-direction:row-reverse;justify-content:flex-start;}
+#toasts{position:fixed;right:1rem;bottom:1rem;display:grid;gap:.55rem;z-index:40;max-width:min(26rem,calc(100vw - 2rem));}
+.toast{background:var(--ink);color:#fff;padding:.85rem 1.1rem;border-radius:5px;box-shadow:var(--shadow-lg);font-size:.93rem;font-weight:500;animation:slideIn .3s var(--ease);}
+.toast.error{background:var(--red-deep);}
+@keyframes slideIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.analytics-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.85rem;margin:1.1rem 0 1.5rem;}
+.analytics-grid .metric{min-width:0;}
+.analytics-grid .metric .big{margin:.45rem 0 .35rem;}
+.analytics-card{margin-top:1rem;}
+.table-wrap{overflow-x:auto;}
+.analytics-table{width:100%;border-collapse:collapse;min-width:420px;}
+.analytics-table th,.analytics-table td{padding:.85rem .9rem;border-bottom:1px solid var(--line);text-align:left;}
+.analytics-table th{color:var(--muted);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;}
+.analytics-table td{font-size:.95rem;}
+.analytics-table td.kn{font-family:var(--font-kn);font-size:1rem;}
+.analytics-table td:last-child,.analytics-table th:last-child{text-align:right;font-variant-numeric:tabular-nums;}
+@media (max-width:960px){.hero,.ws-grid,.eval-grid{grid-template-columns:minmax(0,1fr);}.doc-scroll{max-height:55vh;}.editor{min-height:38vh;font-size:1.08rem;}.nav{order:3;width:100%;margin-left:0;justify-content:center;}.pill{margin-left:auto;}.title-input{font-size:1.15rem;}}
+@media (max-width:700px){.hero h1{font-size:clamp(2.35rem,10vw,3.25rem);}.nav a{padding:.45rem .55rem;font-size:.68rem;letter-spacing:.08em;}.analytics-grid{grid-template-columns:1fr;}}
+@media (max-width:600px){main{padding:1rem .85rem;}.card{padding:1.15rem;border-radius:var(--radius);}.doc-row{grid-template-columns:minmax(0,1fr);padding:.9rem 1rem;}.row-actions{justify-content:flex-start;}.metrics{grid-template-columns:minmax(0,1fr);}.metric .big{font-size:2rem;}.pane-foot{padding:.85rem;}.ws-head .title-input{flex-basis:100%;order:3;}.doc-scroll{padding:.6rem;}.editor{padding:1rem;}.top{padding:.6rem .85rem;gap:.75rem;}.brand-kn{font-size:1.05rem;}.brand-en{font-size:.6rem;}.translate-pane{padding:.85rem 1rem;}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="#/" aria-label="KannadaSetu AI home">
+    <svg width="38" height="38" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#641C32"/>
+      <path d="M5 22 Q16 4 27 22" fill="none" stroke="#F9C300" stroke-width="3" stroke-linecap="round"/>
+      <path d="M5 22 H27" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".85"/>
+      <circle cx="16" cy="24.5" r="1.4" fill="#F9C300"/>
+    </svg>
+    <span class="brand-text">
+      <span class="brand-kn" lang="kn">ಕನ್ನಡ ಸೇತು</span>
+      <span class="brand-en">KannadaSetu AI</span>
+    </span>
+  </a>
+  <nav class="nav" aria-label="Main">
+    <a href="#/" data-nav="digitize">Digitize</a>
+    <a href="#/library" data-nav="library">Library</a>
+    <a href="#/evaluate" data-nav="evaluate">Evaluate</a>
+    <a href="#/analytics" data-nav="analytics">Analytics</a>
+  </nav>
+  <button class="pill" id="statusPill" type="button" data-state="unknown" aria-haspopup="dialog">Checking OCR…</button>
+</header>
+
+<main id="main">
+  <section id="view-digitize" data-view="digitize" aria-labelledby="h-digitize">
+    <div class="hero">
+      <div>
+        <div class="hero-intro">
+          <span class="hero-eyebrow">Kannada OCR · Local inference</span>
+          <h1 id="h-digitize" tabindex="-1">Turn scanned Kannada pages into <em>editable text</em>.</h1>
+          <p>Upload a photo, scan or PDF. Arjuna-OCR runs on your machine — no cloud round-trips, no data leaving your computer. Multi-strategy preprocessing and ensemble decoding handle both printed and handwritten Kannada. Review beside the original, see which words need your attention, then translate or export.</p>
+        </div>
+        <form id="uploadForm" class="card" novalidate>
+          <div class="drop" id="drop">
+            <div class="drop-icon">
+              <svg width="72" height="44" viewBox="0 0 72 44" aria-hidden="true">
+                <rect x="2" y="6" width="18" height="32" rx="2.5" fill="#fff" stroke="#CBBDAE" stroke-width="1.8"/>
+                <path d="M7 15h8M7 20h8M7 25h5" stroke="#CBBDAE" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M25 28 Q36 5 47 28" fill="none" stroke="#F9C300" stroke-width="3" stroke-linecap="round"/>
+                <path d="M52 15h16M52 22h16M52 29h10" stroke="#641C32" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <strong>Drop a scan here, or choose a file</strong>
+            <span class="hint" id="limitsHint">PNG, JPG or PDF.</span>
+            <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" aria-label="Choose a PNG, JPG or PDF file">
+          </div>
+          <button type="button" class="sample-btn" id="sampleBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#8B6738" stroke-width="1.8"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#8B6738" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span><strong>No scan handy? Try a sample Kannada document</strong><br><span class="hint">One click, no file needed — good for a quick demo.</span></span>
+          </button>
+          <div class="picked" id="picked" hidden>
+            <span id="pickedName"></span>
+            <button class="btn small" type="button" id="pickedClear">Remove</button>
+          </div>
+          <div class="field">
+            <label for="uploadTitle">Title <span class="hint" style="font-weight:400">(optional)</span></label>
+            <input type="text" id="uploadTitle" maxlength="200" placeholder="Defaults to the file name" autocomplete="off">
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" id="enhance">
+            <span><strong style="display:block">Clean up the scan first</strong><span class="hint">Ensemble preprocessing: deskew, denoise, contrast boost. Runs 3 variants and picks the best OCR result.</span></span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="handwriting">
+            <span><strong style="display:block">Handwriting mode</strong><span class="hint">CLAHF+Sauvola binarization, stroke-preserving filters, tuned for handwritten Kannada.</span></span>
+          </label>
+          <div class="row" style="margin-top:1.35rem">
+            <button class="btn primary" type="submit" id="runBtn">Extract text</button>
+          </div>
+          <div class="progress" id="progress" hidden>
+            <progress id="progressBar" max="1"></progress>
+            <p id="progressText" role="status"></p>
+          </div>
+          <div class="notice bad" id="uploadError" role="alert" hidden style="margin-top:1rem"></div>
+        </form>
+      </div>
+      <aside class="card" aria-labelledby="h-recent">
+        <h2 id="h-recent">Recent documents</h2>
+        <ul class="recent-list" id="recentList"></ul>
+        <div class="empty" id="recentEmpty" hidden>
+          <strong>Nothing here yet</strong>
+          Upload a scan and it will be saved to your library.
+        </div>
+        <div class="row" style="margin-top:1rem"><a class="btn small" href="#/library">Open library</a></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="view-workspace" data-view="workspace" aria-labelledby="h-ws" hidden>
+    <h1 class="sr-only" id="h-ws" tabindex="-1">Transcription workspace</h1>
+    <div class="ws-head">
+      <a class="btn small" href="#/library">← Back to library</a>
+      <input type="text" id="wsTitle" class="title-input" maxlength="200" aria-label="Document title" autocomplete="off">
+      <span class="badge" id="wsStatus"></span>
+    </div>
+    <div class="notice" id="wsNotice" role="status" hidden style="margin-bottom:1.1rem"></div>
+    <div class="ws-grid">
+      <section class="pane" aria-label="Original document">
+        <div class="pane-bar">
+          <strong>Original</strong>
+          <span class="row">
+            <button class="btn small" type="button" id="prevPage">Previous</button>
+            <span id="pageInfo" class="hint" aria-live="polite"></span>
+            <button class="btn small" type="button" id="nextPage">Next</button>
+          </span>
+        </div>
+        <div class="doc-scroll"><img id="pageImg" alt="Scanned page of the uploaded document"></div>
+      </section>
+      <section class="pane" aria-label="Transcription">
+        <div class="pane-bar">
+          <div class="tabs" role="tablist" aria-label="Text version">
+            <button class="tab" role="tab" id="tabEdit" aria-selected="true" aria-controls="editor" type="button">Your text</button>
+            <button class="tab" role="tab" id="tabOcr" aria-selected="false" aria-controls="ocrView" type="button">Original OCR</button>
+            <button class="tab" role="tab" id="tabConfidence" aria-selected="false" aria-controls="confidenceView" type="button">Confidence</button>
+          </div>
+          <span class="badge" id="editBadge"></span>
+        </div>
+        <textarea class="editor" id="editor" lang="kn" spellcheck="false" aria-label="Transcription, editable"></textarea>
+        <textarea class="editor readonly" id="ocrView" lang="kn" readonly hidden aria-label="Original OCR output, read only"></textarea>
+        <div class="editor readonly" id="confidenceView" lang="kn" hidden aria-live="polite"></div>
+        <div class="conf-legend" id="confLegend" hidden>
+          <span class="conf-high"><i class="dot"></i>High confidence</span>
+          <span class="conf-mid"><i class="dot"></i>Check this line</span>
+          <span class="conf-low"><i class="dot"></i>Likely wrong</span>
+        </div>
+        <div class="translate-pane" id="translatePane" hidden>
+          <div class="tp-label">
+            <span>English translation</span>
+            <button class="btn small" type="button" id="btnCopyEnglish">Copy English</button>
+          </div>
+          <div class="tp-text" id="translateText" lang="en"></div>
+        </div>
+        <div class="pane-foot">
+          <div class="counts" id="counts" aria-live="polite"></div>
+          <div class="row">
+            <button class="btn primary" type="button" id="btnSave">Save changes</button>
+            <button class="btn" type="button" id="btnCopy">Copy text</button>
+            <button class="btn" type="button" id="btnReset">Reset to OCR</button>
+            <button class="btn" type="button" id="btnClear">Clear</button>
+          </div>
+          <div class="row">
+            <button class="btn" type="button" id="btnTxt">Export .txt</button>
+            <button class="btn" type="button" id="btnJson">Export .json</button>
+            <button class="btn" type="button" id="btnDocx">Export .docx</button>
+            <button class="btn" type="button" id="btnPdf">Export .pdf</button>
+            <button class="btn" type="button" id="btnTranslate">Translate to English</button>
+            <a class="btn" id="lnkEval" href="#/evaluate">Check accuracy</a>
+            <button class="btn danger" type="button" id="btnDelete">Delete</button>
+          </div>
+          <p class="hint">Reset to OCR and Clear change the editor only. Choose Save changes to keep them.</p>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section id="view-library" data-view="library" aria-labelledby="h-library" hidden>
+    <h1 id="h-library" tabindex="-1">Document library</h1>
+    <div class="lib-bar">
+      <label class="sr-only" for="libSearch">Search by title, file name or text</label>
+      <input type="search" id="libSearch" placeholder="Search by title, file name or text" autocomplete="off">
+      <span class="hint" id="libCount"></span>
+    </div>
+    <ul class="doc-list" id="libList"></ul>
+    <div class="empty card" id="libEmpty" hidden></div>
+    <div class="row" style="margin-top:1rem"><button class="btn" type="button" id="libMore" hidden>Show more</button></div>
+  </section>
+
+  <section id="view-evaluate" data-view="evaluate" aria-labelledby="h-eval" hidden>
+    <h1 id="h-eval" tabindex="-1">Check OCR accuracy</h1>
+    <p class="hint" style="margin:.6rem 0 1.25rem;max-width:44rem">Compare OCR text with a reference transcription that you provide. The reference is your ground truth, so the scores are only as good as that text.</p>
+    <div class="eval-grid">
+      <form class="card" id="evalForm" novalidate>
+        <div class="field" style="margin-top:0">
+          <label for="evalDoc">OCR text to check</label>
+          <select id="evalDoc"></select>
+        </div>
+        <div class="field" id="evalWithWrap">
+          <label for="evalWith">Which version</label>
+          <select id="evalWith">
+            <option value="ocr">Original OCR output</option>
+            <option value="edited">My edited text</option>
+          </select>
+        </div>
+        <div class="field" id="evalHypWrap">
+          <label for="evalHyp">Pasted OCR text</label>
+          <textarea id="evalHyp" rows="5" lang="kn"></textarea>
+        </div>
+        <div class="field">
+          <label for="evalRef">Reference transcription (your ground truth)</label>
+          <textarea id="evalRef" rows="8" lang="kn"></textarea>
+          <span class="hint">Type or paste the correct text, ideally checked by a person against the original page.</span>
+        </div>
+        <div class="row" style="margin-top:1.1rem"><button class="btn primary" type="submit" id="evalBtn">Calculate error rates</button></div>
+        <div class="notice bad" id="evalError" role="alert" hidden style="margin-top:1rem"></div>
+      </form>
+      <div class="card" id="evalResult" aria-live="polite">
+        <div class="empty"><strong>No scores yet</strong>Add a reference transcription and calculate to see the character and word error rates.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-analytics" data-view="analytics" aria-labelledby="h-analytics" hidden>
+    <h1 id="h-analytics" tabindex="-1">OCR analytics</h1>
+    <p class="hint" style="margin:.6rem 0 1.25rem;max-width:48rem">A live summary of your document collection, model confidence, and the corrections recorded by KannadaSetu.</p>
+    <div class="analytics-grid">
+      <article class="metric"><div class="name">Total documents</div><div class="big" id="totalDocs">—</div><p class="hint">Documents saved in your library</p></article>
+      <article class="metric"><div class="name">Top corrections (sum)</div><div class="big" id="totalCorrections">—</div><p class="hint">Sum of the correction counts across the top 10 patterns</p></article>
+      <article class="metric"><div class="name">Average confidence</div><div class="big" id="averageConfidence">—</div><p class="hint" id="confidenceNote">Average of the per-word confidence across all OCR runs.</p></article>
+    </div>
+    <section class="card analytics-card" aria-labelledby="h-errors">
+      <div class="ws-head"><div><h2 id="h-errors">Common OCR errors</h2><p class="hint">Frequently corrected text patterns from your documents.</p></div><span class="badge" id="errorCount">0 patterns</span></div>
+      <div class="table-wrap" id="commonErrors"><div class="empty"><strong>No corrections recorded yet</strong>Correct and save OCR text to build a useful error-pattern history.</div></div>
+    </section>
+  </section>
+</main>
+
+<footer class="footer" id="footer">
+  Uploaded files stay on this computer. OCR runs locally with <strong>Arjuna-OCR</strong>. Translation runs locally with <strong>ControlMT</strong>.
+</footer>
+
+<dialog id="dlgStatus" aria-labelledby="dlgStatusTitle">
+  <form method="dialog">
+    <h2 id="dlgStatusTitle">OCR engine status</h2>
+    <div id="dlgStatusBody"></div>
+    <div class="dlg-actions">
+      <button class="btn" type="button" id="probeBtn">Test model load</button>
+      <button class="btn primary" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlgConfirm" aria-labelledby="dlgConfirmText">
+  <form method="dialog">
+    <p id="dlgConfirmText"></p>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn danger" value="ok" id="dlgConfirmOk">Confirm</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlgRename" aria-labelledby="dlgRenameTitle">
+  <form method="dialog" id="renameForm">
+    <h2 id="dlgRenameTitle">Rename document</h2>
+    <input type="text" id="renameInput" maxlength="200" aria-label="New title" autocomplete="off">
+    <div class="dlg-actions reverse">
+      <button class="btn primary" value="ok">Save title</button>
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+    </div>
+  </form>
+</dialog>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs||{})) {
+    if (v==null||v===false) continue;
+    if (k==="class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v===true?"":v);
+  }
+  for (const kid of kids.flat()) if (kid!=null) el.append(kid);
+  return el;
+}
+const state = { view:"digitize", limits:{max_upload_mb:15,max_pdf_pages:10}, file:null, doc:null, page:1, savedText:"", tab:"edit", lib:{items:[],total:0}, evalPreset:null, sampleLoading:false, analyticsLoading:false };
+class ApiError extends Error { constructor(s,b){ const e=b&&b.error; super(e&&e.message?e.message:`The request failed (HTTP ${s}).`); this.status=s; this.code=e&&e.code; this.data=e||{}; } }
+const networkError = () => new ApiError(0,{error:{code:"network",message:"Could not reach the KannadaSetu server. Is it still running?"}});
+async function api(path, options) { let res; try { res = await fetch(path, options); } catch(e){ throw networkError(); } if (res.status===204) return null; const j = (res.headers.get("content-type")||"").includes("application/json"); const body = j ? await res.json() : null; if (!res.ok) throw new ApiError(res.status, body); return body; }
+const sendJson = (m,d) => ({ method:m, headers:{"Content-Type":"application/json"}, body:JSON.stringify(d) });
+function toast(msg, kind, ms) { const el = h("div",{class:"toast"+(kind==="error"?" error":"")},msg); $("#toasts").append(el); setTimeout(()=>el.remove(),ms||3500); }
+function confirmDialog(msg, okLabel) { const dlg=$("#dlgConfirm"); $("#dlgConfirmText").textContent=msg; $("#dlgConfirmOk").textContent=okLabel||"Confirm"; return new Promise(r=>{ dlg.addEventListener("close",()=>r(dlg.returnValue==="ok"),{once:true}); dlg.returnValue="cancel"; dlg.showModal(); }); }
+function askTitle(cur) { const dlg=$("#dlgRename"), inp=$("#renameInput"); inp.value=cur; return new Promise(r=>{ dlg.addEventListener("close",()=>r(dlg.returnValue==="ok"?inp.value.trim():null),{once:true}); dlg.returnValue="cancel"; dlg.showModal(); inp.select(); }); }
+const fmtDate = iso => { try { return new Date(iso).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"}); } catch(e){ return iso; } };
+const fmtBytes = n => n<1048576 ? `${Math.max(1,Math.round(n/1024))} KB` : `${(n/1048576).toFixed(1)} MB`;
+const countChars = s => Array.from(s).length;
+const countWords = s => (s.trim()?s.trim().split(/\s+/).length:0);
+const pct = x => `${(x*100).toFixed(1)}%`;
+const plural = (n,w) => `${n.toLocaleString()} ${w}${n===1?"":"s"}`;
+const STATUS = { completed:["OCR complete","ok"], partial:["Partly processed","warn"], failed:["OCR failed","bad"], not_processed:["OCR not run","warn"], processing:["Processing",""] };
+function statusBadge(status) { const [label,kind] = STATUS[status]||[status,""]; return h("span",{class:"badge"+(kind?" "+kind:"")},label); }
+function isDirty() { return state.view==="workspace" && state.doc && $("#editor").value !== state.savedText; }
+function showView(name) { state.view=name; $$("[data-view]").forEach(el=>{ el.hidden = el.dataset.view!==name; }); const navName = name==="workspace"?"library":name; $$("[data-nav]").forEach(a=>{ if(a.dataset.nav===navName) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); }); const heading = $(`[data-view="${name}"] h1`); if (heading) heading.focus({preventScroll:true}); window.scrollTo(0,0); }
+function route() { const parts=(location.hash||"#/").slice(2).split("/"); const name=parts[0]||"digitize"; if(name==="doc"&&parts[1]) return openDocument(parts[1]); if(name==="library"){ showView("library"); return loadLibrary(true); } if(name==="evaluate"){ state.evalPreset=parts[1]||null; showView("evaluate"); return setupEvaluate(); } if(name==="analytics"){ showView("analytics"); return loadAnalytics(); } showView("digitize"); return loadRecent(); }
+document.addEventListener("click", async e => { const link = e.target.closest('a[href^="#/"]'); if(!link||!isDirty()) return; e.preventDefault(); const target=link.getAttribute("href"); if(await confirmDialog("You have unsaved changes. Leave without saving?","Leave without saving")) location.hash=target; });
+window.addEventListener("beforeunload", e => { if(isDirty()){ e.preventDefault(); e.returnValue=""; } });
+window.addEventListener("hashchange", route);
+
+async function refreshProvider(probe) { const pill=$("#statusPill"); try { const p = await api("/api/provider-status"+(probe?"?probe=true":"")); pill.dataset.state = p.configured?"ready":"missing"; pill.textContent = p.configured?"OCR model ready":"OCR model unavailable"; return p; } catch(err){ pill.dataset.state="down"; pill.textContent="Server unreachable"; return null; } }
+function renderProviderDialog(p) { const body=$("#dlgStatusBody"); body.replaceChildren(); if(!p){ body.append(h("p",{},"The KannadaSetu server did not answer. Start it again with run.bat.")); return; } const rows=[["Status", p.configured?"Model ready":"Not available"]]; if(p.problem) rows.push(["Problem", p.problem]); rows.push(["Last successful OCR", p.last_success_at?fmtDate(p.last_success_at):"None since server start"],["Live inference verified", p.live_inference_verified?"Yes, this session":"Not yet"]); if(p.last_error) rows.push(["Last error", p.last_error]); if(p.probe) rows.push(["Model load", p.probe.ready?"OK":`Failed: ${p.probe.error}`]); const dl=h("dl",{class:"details"}); for(const [k,v] of rows) dl.append(h("dt",{},k),h("dd",{},v)); body.append(dl); if(p.problem) body.append(h("p",{class:"notice warn",style:"margin-top:1rem"},`${p.problem} The library, editor, export and evaluation still work without OCR.`)); }
+
+async function loadSample() {
+  if (state.sampleLoading) return;
+  state.sampleLoading = true;
+  const btn = $("#sampleBtn"); btn.disabled = true;
+  try {
+    const res = await fetch("/api/sample", { method: "POST" });
+    if (!res.ok) { const body = await res.json().catch(() => null); throw new ApiError(res.status, body); }
+    const doc = await res.json();
+    toast("Sample processed. Look at the Confidence tab.");
+    resetUpload();
+    location.hash = `#/doc/${doc.id}`;
+  } catch (err) {
+    if (err.code === "sample_unavailable") toast("No sample file bundled. Upload your own Kannada scan instead.", "error", 5000);
+    else toast(err.message, "error", 5000);
+  } finally { btn.disabled = false; state.sampleLoading = false; }
+}
+
+function setPicked(file) { state.file=file; $("#picked").hidden=!file; $("#pickedName").textContent = file?`${file.name} (${fmtBytes(file.size)})`:""; $("#uploadError").hidden=true; }
+function pickFile(file) { if(!file) return; const ext=(file.name.split(".").pop()||"").toLowerCase(); if(!["png","jpg","jpeg","pdf"].includes(ext)) return showUploadError("That file type is not supported. Choose a PNG, JPG, JPEG or PDF file."); if(file.size>state.limits.max_upload_mb*1048576) return showUploadError(`That file is larger than ${state.limits.max_upload_mb} MB.`); if(file.size===0) return showUploadError("That file is empty."); setPicked(file); }
+function showUploadError(msg) { const el=$("#uploadError"); el.textContent=msg; el.hidden=false; }
+function uploadWithProgress(formData, onProgress) { return new Promise((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open("POST","/api/ocr"); xhr.responseType="json"; xhr.upload.onprogress=e=>{ if(e.lengthComputable) onProgress(e.loaded/e.total,false); }; xhr.upload.onload=()=>onProgress(1,true); xhr.onerror=()=>reject(networkError()); xhr.onload=()=>(xhr.status>=200&&xhr.status<300)?resolve(xhr.response):reject(new ApiError(xhr.status,xhr.response)); xhr.send(formData); }); }
+function setupDigitize() {
+  const drop=$("#drop"), input=$("#fileInput");
+  input.addEventListener("change",()=>{ pickFile(input.files[0]); input.value=""; });
+  ["dragenter","dragover"].forEach(t=>drop.addEventListener(t,e=>{ e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{ e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop",e=>pickFile(e.dataTransfer.files[0]));
+  $("#pickedClear").addEventListener("click",()=>setPicked(null));
+  $("#sampleBtn").addEventListener("click", loadSample);
+  $("#uploadForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    if(!state.file) return showUploadError("Choose a file first.");
+    $("#uploadError").hidden=true;
+    const run=$("#runBtn"), bar=$("#progressBar"), text=$("#progressText");
+    run.disabled=true; $("#progress").hidden=false; bar.value=0; text.textContent="Uploading 0%";
+    const form=new FormData(); form.append("file",state.file);
+    const title=$("#uploadTitle").value.trim(); if(title) form.append("title",title);
+    form.append("enhance", $("#enhance").checked?"true":"false");
+    form.append("handwriting", $("#handwriting").checked?"true":"false");
+    try {
+      const doc=await uploadWithProgress(form,(frac,done)=>{ if(done){ bar.removeAttribute("value"); text.replaceChildren(h("span",{class:"spinner","aria-hidden":"true"}),"Upload complete. Arjuna-OCR is reading your pages with ensemble decoding. First run can take a minute."); } else { bar.value=frac; text.textContent=`Uploading ${Math.round(frac*100)}%`; } });
+      toast(doc.status==="partial"?"Some pages could not be read. Check the notice in the workspace.":"Text extracted.");
+      resetUpload(); location.hash=`#/doc/${doc.id}`;
+    } catch(err) {
+      if(err.data&&err.data.document_id){ toast("Saved to your library, but OCR did not finish.","error",6000); resetUpload(); location.hash=`#/doc/${err.data.document_id}`; }
+      else showUploadError(err.message);
+    } finally { run.disabled=false; $("#progress").hidden=true; }
+  });
+}
+function resetUpload() { setPicked(null); $("#uploadTitle").value=""; $("#enhance").checked=false; $("#handwriting").checked=false; }
+async function loadRecent() { const list=$("#recentList"); try { const data=await api("/api/documents?limit=5"); list.replaceChildren(...data.items.map(d=>h("li",{},h("a",{href:`#/doc/${d.id}`},d.title,h("small",{},fmtDate(d.updated_at)))))); $("#recentEmpty").hidden=data.items.length>0; } catch(err){ list.replaceChildren(h("li",{class:"hint"},err.message)); } }
+
+async function openDocument(id) {
+  showView("workspace");
+  try { state.doc = await api(`/api/documents/${encodeURIComponent(id)}`); }
+  catch(err) { state.doc=null; state.savedText=""; $("#wsTitle").value=""; $("#editor").value=""; $("#ocrView").value=""; $("#confidenceView").textContent=""; $("#counts").textContent=""; $("#pageImg").removeAttribute("src"); $("#pageInfo").textContent=""; const notice=$("#wsNotice"); notice.className="notice bad"; notice.hidden=false; notice.textContent = err.status===404?"That document does not exist. It may have been deleted.":err.message; return; }
+  state.page=1; renderWorkspace();
+}
+function renderWorkspace() {
+  const d=state.doc;
+  $("#wsTitle").value=d.title;
+  $("#wsStatus").replaceWith(Object.assign(statusBadge(d.status),{id:"wsStatus"}));
+  $("#editor").value=d.final_text;
+  $("#ocrView").value=d.ocr_text||"";
+  state.savedText=d.final_text;
+  setTab("edit"); renderNotice(); renderPage(); updateEditorState();
+  $("#lnkEval").href=`#/evaluate/${d.id}`;
+  const tp=$("#translatePane"), tt=$("#translateText");
+  if (d.translation) { tt.textContent=d.translation; tp.hidden=false; } else { tp.hidden=true; }
+  renderConfidence(d);
+}
+
+function renderConfidence(d) {
+  const legend = $("#confLegend");
+  const view = $("#confidenceView");
+  view.textContent = "";
+
+  const pagesWithWords = (d.pages || []).filter(
+    p => p.status === "ok" && Array.isArray(p.words) && p.words.length
+  );
+
+  if (!pagesWithWords.length) {
+    // No word-level data at all — show text + explanation
+    if (d.ocr_text && d.ocr_text.trim()) {
+      legend.hidden = true;
+      view.append(h("div", { class: "conf-summary" },
+        "This document was processed, but per-word confidence was not returned by the OCR model. " +
+        "The text below is the raw OCR output. Use the editor to correct it manually."
+      ));
+      view.append(h("div", { style: "white-space:pre-wrap;" }, d.ocr_text));
+    } else {
+      legend.hidden = true;
+      view.textContent = "No OCR text available for this document.";
+    }
+    return;
+  }
+
+  legend.hidden = false;
+
+  const allWords = pagesWithWords.flatMap(p => p.words);
+  const high = allWords.filter(w => w.confidence >= 0.85).length;
+  const mid  = allWords.filter(w => w.confidence >= 0.6 && w.confidence < 0.85).length;
+  const low  = allWords.filter(w => w.confidence < 0.6).length;
+  const total = allWords.length || 1;
+
+  view.append(h("div", { class: "conf-summary" },
+    `${high} high · ${mid} check · ${low} low-confidence of ${total} words ` +
+    `(${Math.round((high / total) * 100)}% high)`
+  ));
+
+  for (const page of pagesWithWords) {
+    if (d.page_count > 1) {
+      view.append(h("div", { class: "page-label" }, `Page ${page.page}`));
+    }
+    for (const w of page.words) {
+      const cls = w.confidence >= 0.85 ? "conf-high"
+                : w.confidence >= 0.6  ? "conf-mid"
+                : "conf-low";
+      const clickable = w.confidence < 0.6;
+      view.append(h("span", {
+        class: cls,
+        title: `Confidence: ${(w.confidence * 100).toFixed(1)}%` +
+               (clickable ? " — click to correct" : ""),
+        onclick: clickable ? () => promptCorrection(d, w) : null,
+        style: clickable ? "cursor:pointer;" : "",
+      }, w.text + " "));
+    }
+    view.append(h("div", { style: "height:.4rem" }));
+  }
+}
+
+async function promptCorrection(d, word) {
+  const fixed = window.prompt(`Correct this word (OCR confidence ${(word.confidence*100).toFixed(0)}%):`, word.text);
+  if (!fixed || fixed === word.text) return;
+  try {
+    const fd = new FormData();
+    fd.append("original", word.text);
+    fd.append("corrected", fixed);
+    fd.append("context", "");
+    await api(`/api/documents/${d.id}/correct`, { method: "POST", body: fd });
+    const editor = $("#editor");
+    editor.value = editor.value.split(word.text).join(fixed);
+    updateEditorState();
+    toast(`Recorded correction: "${word.text}" → "${fixed}"`);
+  } catch (err) { toast(err.message, "error", 6000); }
+}
+
+function renderNotice() { const d=state.doc, el=$("#wsNotice"); let msg="", cls="notice warn"; if(d.status==="failed"||d.status==="not_processed"){ msg=`${d.error||"OCR did not run."} The page is saved, so you can type or paste the transcription on the right.`; if(d.status==="failed") cls="notice bad"; } else if(d.status==="partial"){ const done=d.pages.filter(p=>p.status==="ok").length; msg=`OCR read ${done} of ${d.page_count} pages. ${d.error||""}`.trim(); } else if(d.status==="completed"&&!d.ocr_text.trim()){ msg="The OCR engine returned no text for this document. If the page does contain text, try again with the clean-up option."; } el.hidden=!msg; el.className=cls; el.textContent=msg; }
+function renderPage() { const d=state.doc, img=$("#pageImg"); img.alt=`Page ${state.page} of ${d.page_count}`; img.src=`/api/documents/${encodeURIComponent(d.id)}/pages/${state.page}`; img.onerror=()=>{ img.removeAttribute("src"); img.alt="The page preview is not available."; }; $("#pageInfo").textContent=`Page ${state.page} of ${d.page_count}`; $("#prevPage").disabled=state.page<=1; $("#nextPage").disabled=state.page>=d.page_count; }
+function setTab(tab) { state.tab=tab; $("#tabEdit").setAttribute("aria-selected",String(tab==="edit")); $("#tabOcr").setAttribute("aria-selected",String(tab==="ocr")); $("#tabConfidence").setAttribute("aria-selected",String(tab==="confidence")); $("#editor").hidden=tab!=="edit"; $("#ocrView").hidden=tab!=="ocr"; $("#confidenceView").hidden=tab!=="confidence"; $("#confLegend").hidden = tab!=="confidence" || $("#confLegend").hidden; }
+function updateEditorState() { const d=state.doc; if(!d) return; const value=$("#editor").value; const dirty=value!==state.savedText; const differs=value!==d.ocr_text; $("#counts").textContent=`${plural(countChars(value),"character")}, ${plural(countWords(value),"word")}`; $("#editor").classList.toggle("edited",differs); const badge=$("#editBadge"); badge.className="badge"+(dirty?" warn":differs?" warn":""); badge.textContent=dirty?"Unsaved changes":differs?"Edited and saved":"Matches original OCR"; $("#btnSave").disabled=!dirty; }
+async function saveDocument() { const d=state.doc; if(!d) return false; const value=$("#editor").value; try { state.doc=await api(`/api/documents/${d.id}`,sendJson("PUT",{edited_text:value===d.ocr_text?null:value})); state.savedText=state.doc.final_text; updateEditorState(); toast("Changes saved."); return true; } catch(err){ toast(err.message,"error",6000); return false; } }
+async function renameFromInput() { const d=state.doc, input=$("#wsTitle"); if(!d) return; const title=input.value.trim(); if(!title){ input.value=d.title; return; } if(title===d.title) return; try { state.doc=await api(`/api/documents/${d.id}`,sendJson("PUT",{title})); input.value=state.doc.title; toast("Title updated."); } catch(err){ input.value=d.title; toast(err.message,"error",6000); } }
+async function copyText() { const text=$("#editor").value; try { await navigator.clipboard.writeText(text); } catch(e){ const ta=$("#editor"); ta.select(); if(!document.execCommand("copy")) return toast("Copy failed. Select the text and press Ctrl+C.","error"); } toast("Kannada text copied."); }
+async function exportDocument(kind) { if(isDirty()&&!(await saveDocument())) return; window.location.href=`/api/documents/${encodeURIComponent(state.doc.id)}/export.${kind}`; }
+async function translateDocument() { if(!state.doc) return; const btn=$("#btnTranslate"); btn.disabled=true; const original=btn.textContent; btn.textContent="Translating…"; try { const r=await api(`/api/documents/${encodeURIComponent(state.doc.id)}/translate`,{method:"POST"}); toast("Translation ready."); state.doc.translation=r.translation; $("#translateText").textContent=r.translation; $("#translatePane").hidden=false; } catch(err){ toast(err.message,"error",6000); } finally { btn.disabled=false; btn.textContent=original; } }
+async function copyEnglish() { const text=$("#translateText").textContent; if(!text) return; try { await navigator.clipboard.writeText(text); toast("English text copied."); } catch(e){ toast("Copy failed. Select the English text and press Ctrl+C.","error"); } }
+function setupWorkspace() {
+  $("#editor").addEventListener("input",updateEditorState);
+  $("#tabEdit").addEventListener("click",()=>setTab("edit"));
+  $("#tabOcr").addEventListener("click",()=>setTab("ocr"));
+  $("#tabConfidence").addEventListener("click",()=>setTab("confidence"));
+  $("#btnSave").addEventListener("click",saveDocument);
+  $("#btnCopy").addEventListener("click",copyText);
+  $("#btnCopyEnglish").addEventListener("click",copyEnglish);
+  $("#btnReset").addEventListener("click",()=>{ if(!state.doc) return; $("#editor").value=state.doc.ocr_text||""; updateEditorState(); setTab("edit"); });
+  $("#btnClear").addEventListener("click",()=>{ $("#editor").value=""; updateEditorState(); setTab("edit"); $("#editor").focus(); });
+  $("#btnTxt").addEventListener("click",()=>exportDocument("txt"));
+  $("#btnJson").addEventListener("click",()=>exportDocument("json"));
+  $("#btnDocx").addEventListener("click",()=>exportDocument("docx"));
+  $("#btnPdf").addEventListener("click",()=>exportDocument("pdf"));
+  $("#btnTranslate").addEventListener("click",translateDocument);
+  $("#wsTitle").addEventListener("change",renameFromInput);
+  $("#wsTitle").addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
+  $("#prevPage").addEventListener("click",()=>{ if(state.page>1){ state.page--; renderPage(); } });
+  $("#nextPage").addEventListener("click",()=>{ if(state.doc&&state.page<state.doc.page_count){ state.page++; renderPage(); } });
+  $("#btnDelete").addEventListener("click",async()=>{ if(!state.doc) return; if(!(await confirmDialog(`Delete "${state.doc.title}" and its transcription? This cannot be undone.`,"Delete document"))) return; try { await api(`/api/documents/${state.doc.id}`,{method:"DELETE"}); state.doc=null; toast("Document deleted."); location.hash="#/library"; } catch(err){ toast(err.message,"error",6000); } });
+  document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"&&state.view==="workspace"&&state.doc){ e.preventDefault(); if(isDirty()) saveDocument(); } });
+}
+
+let searchTimer=null;
+async function loadLibrary(reset) { const q=$("#libSearch").value.trim(); const offset=reset?0:state.lib.items.length; try { const data=await api(`/api/documents?limit=25&offset=${offset}&q=${encodeURIComponent(q)}`); state.lib.items=reset?data.items:state.lib.items.concat(data.items); state.lib.total=data.total; renderLibrary(q); } catch(err){ toast(err.message,"error",6000); } }
+function renderLibrary(q) { const {items,total}=state.lib; $("#libList").replaceChildren(...items.map(libraryRow)); $("#libCount").textContent=total?`${plural(total,"document")}${q?" found":""}`:""; $("#libMore").hidden=items.length>=total; const empty=$("#libEmpty"); empty.hidden=total>0; empty.replaceChildren(); if(!total){ if(q) empty.append(h("strong",{},"No documents match your search"),"Try a different word, or clear the search box."); else empty.append(h("strong",{},"Your library is empty"),"Upload a scan to create the first entry. ",h("a",{href:"#/"},"Go to Digitize")); } }
+function libraryRow(d) { return h("li",{class:"doc-row"},h("div",{},h("a",{class:"doc-title",href:`#/doc/${d.id}`},d.title),h("div",{class:"doc-meta"},h("span",{},d.original_filename),h("span",{},plural(d.page_count,"page")),h("span",{},plural(d.char_count||0,"character")),d.avg_confidence!=null?h("span",{},`Confidence ${Math.round(d.avg_confidence*100)}%`):null,h("span",{},`Updated ${fmtDate(d.updated_at)}`)),d.snippet?h("div",{class:"doc-snippet",lang:"kn"},d.snippet):null),h("div",{class:"row-actions"},statusBadge(d.status),d.is_edited?h("span",{class:"badge warn"},"Edited"):null,h("button",{class:"btn small",type:"button","aria-label":`Rename ${d.title}`,onclick:()=>renameFromLibrary(d)},"Rename"),h("button",{class:"btn small danger",type:"button","aria-label":`Delete ${d.title}`,onclick:()=>deleteFromLibrary(d)},"Delete"))); }
+async function renameFromLibrary(d) { const title=await askTitle(d.title); if(!title||title===d.title) return; try { await api(`/api/documents/${d.id}`,sendJson("PUT",{title})); toast("Title updated."); loadLibrary(true); } catch(err){ toast(err.message,"error",6000); } }
+async function deleteFromLibrary(d) { if(!(await confirmDialog(`Delete "${d.title}" and its transcription? This cannot be undone.`,"Delete document"))) return; try { await api(`/api/documents/${d.id}`,{method:"DELETE"}); toast("Document deleted."); loadLibrary(true); } catch(err){ toast(err.message,"error",6000); } }
+function setupLibrary() { $("#libSearch").addEventListener("input",()=>{ clearTimeout(searchTimer); searchTimer=setTimeout(()=>loadLibrary(true),250); }); $("#libMore").addEventListener("click",()=>loadLibrary(false)); }
+
+async function setupEvaluate() { const select=$("#evalDoc"); const previous=state.evalPreset||select.value; let items=[]; try { items=(await api("/api/documents?limit=200")).items; } catch(err){ toast(err.message,"error"); } select.replaceChildren(h("option",{value:""},"Paste OCR text manually"),...items.map(d=>h("option",{value:d.id},d.title))); if(previous&&items.some(d=>d.id===previous)) select.value=previous; syncEvalFields(); }
+function syncEvalFields() { const hasDoc=Boolean($("#evalDoc").value); $("#evalWithWrap").hidden=!hasDoc; $("#evalHypWrap").hidden=hasDoc; }
+function setupEvaluateForm() {
+  $("#evalDoc").addEventListener("change",syncEvalFields);
+  $("#evalForm").addEventListener("submit",async e=>{ e.preventDefault(); const error=$("#evalError"); error.hidden=true; const reference=$("#evalRef").value; if(!reference.trim()){ error.textContent="Add the reference transcription first."; error.hidden=false; return; } const docId=$("#evalDoc").value; const payload={reference}; if(docId){ payload.document_id=docId; payload.compare_with=$("#evalWith").value; } else payload.hypothesis=$("#evalHyp").value; const button=$("#evalBtn"); button.disabled=true; try { renderEvaluation(await api("/api/evaluate",sendJson("POST",payload))); } catch(err){ error.textContent=err.message; error.hidden=false; } finally { button.disabled=false; } });
+}
+function renderEvaluation(r) { const label={ocr_text:"the original OCR output",edited_text:"your edited text",pasted_text:"the pasted text"}[r.compared]; const result=$("#evalResult"); result.replaceChildren(h("h2",{},"Error rates"),h("div",{class:"metrics"},h("div",{class:"metric"},h("div",{class:"big"},pct(r.cer)),h("div",{class:"name"},"Character error rate")),h("div",{class:"metric"},h("div",{class:"big"},pct(r.wer)),h("div",{class:"name"},"Word error rate"))),h("p",{},r.interpretation),h("dl",{class:"details"},h("dt",{},"Compared"),h("dd",{},`${label} against your reference`),h("dt",{},"Characters"),h("dd",{},`${r.reference_chars.toLocaleString()} in the reference, ${r.hypothesis_chars.toLocaleString()} compared`),h("dt",{},"Words"),h("dd",{},`${r.reference_words.toLocaleString()} in the reference, ${r.hypothesis_words.toLocaleString()} compared`),h("dt",{},"Reference"),h("dd",{},"Supplied by you (ground truth)")),h("p",{class:"notice warn",style:"margin-top:1rem"},r.caveat),h("p",{class:"hint",style:"margin-top:.85rem"},r.method)); }
+
+async function loadAnalytics() {
+  if (state.analyticsLoading) return;
+  state.analyticsLoading = true;
+  $("#totalDocs").textContent = "…";
+  $("#totalCorrections").textContent = "…";
+  $("#averageConfidence").textContent = "…";
+  $("#commonErrors").replaceChildren(h("div",{class:"empty"},h("strong",{},"Loading analytics"),"Fetching your document and correction summary."));
+  try {
+    const [summary, errors] = await Promise.all([
+      api("/api/analytics/summary"),
+      api("/api/analytics/common-errors?limit=10")
+    ]);
+    $("#totalDocs").textContent = Number.isFinite(summary.total_documents) ? summary.total_documents.toLocaleString() : "—";
+    const rows = Array.isArray(errors.errors) ? errors.errors : [];
+    const corrections = rows.reduce((sum, item) => sum + (Number(item.count) || 0), 0);
+    $("#totalCorrections").textContent = corrections.toLocaleString();
+    if (typeof summary.average_confidence === "number" && Number.isFinite(summary.average_confidence)) {
+      $("#averageConfidence").textContent = `${(summary.average_confidence * 100).toFixed(1)}%`;
+      $("#confidenceNote").textContent = "Average per-word confidence across all OCR runs.";
+    } else {
+      $("#averageConfidence").textContent = "—";
+      $("#confidenceNote").textContent = "No OCR runs with confidence data yet.";
+    }
+    $("#errorCount").textContent = `${rows.length} pattern${rows.length===1?"":"s"}`;
+    const wrap = $("#commonErrors");
+    if (!rows.length) {
+      wrap.replaceChildren(h("div",{class:"empty"},h("strong",{},"No corrections recorded yet"),"Correct and save OCR text to build a useful error-pattern history."));
+    } else {
+      const table = h("table",{class:"analytics-table"});
+      const thead = h("thead",{},h("tr",{},h("th",{},"Original OCR"),h("th",{},"Corrected text"),h("th",{},"Count")));
+      const tbody = h("tbody");
+      rows.forEach(item => tbody.append(h("tr",{},h("td",{class:"kn",lang:"kn"},String(item.original ?? "")),h("td",{class:"kn",lang:"kn"},String(item.corrected ?? "")),h("td",{},String(Number(item.count)||0)))));
+      table.append(thead,tbody); wrap.replaceChildren(table);
+    }
+  } catch (err) {
+    $("#commonErrors").replaceChildren(h("div",{class:"notice bad"},`Could not load analytics: ${err.message}`));
+    toast("Analytics could not be refreshed.","error",5000);
+  } finally { state.analyticsLoading = false; }
+}
+
+function setupShell() { $("#statusPill").addEventListener("click",async()=>{ const dlg=$("#dlgStatus"); renderProviderDialog(await refreshProvider(false)); dlg.showModal(); }); $("#probeBtn").addEventListener("click",async()=>renderProviderDialog(await refreshProvider(true))); }
+async function init() { setupShell(); setupDigitize(); setupWorkspace(); setupLibrary(); setupEvaluateForm(); try { const health=await api("/api/health"); state.limits=health.limits; $("#limitsHint").textContent=`PNG, JPG or PDF. Up to ${health.limits.max_upload_mb} MB and ${health.limits.max_pdf_pages} pages.`; } catch(err){ toast(err.message,"error",6000); } refreshProvider(false); route(); }
+init();
+</script>
+</body>
+</html>
